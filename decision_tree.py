@@ -5,7 +5,6 @@ import sys, os
 import argparse
 from datetime import datetime
 import math
-import pprint 
 
 
 def get_dict(file_name):
@@ -229,9 +228,20 @@ def validate(validation_data_set, dec_tree, class_node='Class'):
         if validate_record(record, dec_tree, class_node):
             correct_records += 1
 
-    accuracy = (correct_records * 1.0)/total_records
+    accuracy = (correct_records * 100.0)/total_records
     logging.info(str(accuracy) + " is accuracy")
     return accuracy
+
+
+def print_decision_tree(d, level=0, parent=None):
+  for k, v in d.iteritems():
+    if isinstance(v, dict):
+      for k1, v1 in v.iteritems():
+        if isinstance(v1, dict):
+            print '|' * level + str(k) + " = " + str(k1) + " : "
+            print_decision_tree(v1, level + 1)
+        else:
+            print '|' * level + str(k) + " = " + str(k1) + " : " + str(v1)
 
 
 def decision_tree(training_data_set, remaining_nodes=None,
@@ -338,18 +348,17 @@ def main():
         logging.error("unable to load validating data set.")
         return False
 
-    pp = pprint.PrettyPrinter(indent=2)
     dec_tree = decision_tree(tr_set, through_entropy=True)
-    # pp.pprint(dec_tree)
+    print_decision_tree(dec_tree)
 
     accuracy = validate(v_set, dec_tree)
-    print accuracy
-    print validate(te_set, dec_tree)
+    print str(accuracy) + " is accuracy of validation set with entropy"
+    print str(validate(te_set, dec_tree)) + " is accuracy of test set with entropy"
 
     hearistic_dec_tree = decision_tree(tr_set, through_entropy=False)
     accuracy = validate(v_set, hearistic_dec_tree)
-    print accuracy
-    print validate(te_set, hearistic_dec_tree)
+    print str(accuracy) + " is accuracy of validation set with impurity heuristic."
+    print str(validate(te_set, hearistic_dec_tree)) + " is accuracy of test set with impurity heuristic"
     return True
 
 if __name__ == "__main__":
