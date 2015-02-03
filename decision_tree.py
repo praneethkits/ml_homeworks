@@ -2,7 +2,6 @@
 import csv
 import logging
 import sys, os
-import argparse
 from datetime import datetime
 import math
 
@@ -322,34 +321,56 @@ def decision_tree(training_data_set, remaining_nodes=None,
     return ret_decision_tree
 
 
+def copy_tree(actual, copy):
+    """ Makes a copy of actual decision tree"""
+    for k, v in actual.iteritems():
+        if isinstance(v, dict):
+            sub_copy = {}
+            copy_tree(v, sub_copy)
+            copy[k] = sub_copy
+        else:
+            copy[k] = v
+
+
 def main():
     """ Starts the program."""
-    parser = argparse.ArgumentParser(prog='decision_trees.py')
-    parser.add_argument('-tr', nargs=1, required=True,
-                        help="training data set file name")
-    parser.add_argument('-te', nargs=1, required=True,
-                        help="test data set file name")
-    parser.add_argument('-v', nargs=1, required=True,
-                        help="validate data set file name")
-    args = parser.parse_args()
-    
-    status, tr_set = get_dict(args.tr[0])
+    if len(sys.argv) != 7:
+        print "Usage: ./decision_tree.py <L> <K> <training_set> <validation_set> <test_set> <to_print>"
+        return False
+
+    L = sys.argv[1]
+    K = sys.argv[2]
+    training_set = sys.argv[3]
+    validation_set = sys.argv[4]
+    test_set = sys.argv[5]
+    to_print = sys.argv[6]
+
+    if to_print.upper() != 'YES' and to_print.upper() != 'NO':
+        print "to_print argument can take either 'Yes' or 'No', given = %s" % to_print
+        return False
+    elif to_print.upper() == 'YES':
+        to_print = True
+    else:
+        to_print = False
+ 
+    status, tr_set = get_dict(training_set)
     if not status:
         logging.error("unable to load training data set.")
         return False
 
-    status, te_set = get_dict(args.tr[0])
+    status, te_set = get_dict(test_set)
     if not status:
         logging.error("unable to load testing data set.")
         return False
 
-    status, v_set = get_dict(args.v[0])
+    status, v_set = get_dict(validation_set)
     if not status:
         logging.error("unable to load validating data set.")
         return False
 
     dec_tree = decision_tree(tr_set, through_entropy=True)
-    print_decision_tree(dec_tree)
+    if to_print:
+        print_decision_tree(dec_tree)
 
     accuracy = validate(v_set, dec_tree)
     print str(accuracy) + " is accuracy of validation set with entropy"
