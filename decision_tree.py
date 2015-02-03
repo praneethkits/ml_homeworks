@@ -331,6 +331,32 @@ def copy_tree(actual, copy):
         else:
             copy[k] = v
 
+def is_leaf_node(node):
+    """Checks is a given node is a leaf node"""
+    if isinstance(node, dict):
+        for k, v in node.iteritems():
+            if isinstance(v, dict):
+                for k1, v1 in v.iteritems():
+                    if isinstance(v1, dict):
+                        return False
+
+    return True
+
+
+def get_number_of_non_leafNodes(dec_tree):
+    """Counts the number of non_leaf Nodes."""
+    if is_leaf_node(dec_tree):
+        return 0
+
+    count = 0
+    for k, v in dec_tree.iteritems():
+        if isinstance(v, dict):
+            for k1, v1 in v.iteritems():
+                count = count + get_number_of_non_leafNodes(v1)
+                logging.info("%s keys count is %d" % (k1, count))
+
+    return count + 1
+
 
 def main():
     """ Starts the program."""
@@ -369,6 +395,7 @@ def main():
         return False
 
     dec_tree = decision_tree(tr_set, through_entropy=True)
+    
     if to_print:
         print_decision_tree(dec_tree)
 
