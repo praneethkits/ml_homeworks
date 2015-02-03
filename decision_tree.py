@@ -4,6 +4,7 @@ import logging
 import sys, os
 from datetime import datetime
 import math
+from random import randint
 
 
 def get_dict(file_name):
@@ -356,6 +357,19 @@ def get_number_of_non_leafNodes(dec_tree):
                 logging.info("%s keys count is %d" % (k1, count))
 
     return count + 1
+
+
+def post_prune(dec_tree, L, K):
+    """ This function post prunes the dec tree for a given L and K."""
+    best_dec_tree = {}
+    copy_tree(dec_tree, best_dec_tree)
+    for i in xrange(1,L):
+        new_dec_tree = {}
+        copy_tree(dec_tree, new_dec_tree)
+        M = randint(1, K)
+        N = get_number_of_non_leafNodes(new_dec_tree)
+        for j in xrange(1, M):
+            
 
 
 def main():
