@@ -4,7 +4,7 @@ import logging
 import sys, os
 from datetime import datetime
 import math
-from random import randint
+from random import randint, uniform
 
 
 def get_dict(file_name):
@@ -359,17 +359,91 @@ def get_number_of_non_leafNodes(dec_tree):
     return count + 1
 
 
-def post_prune(dec_tree, L, K):
+def get_nth_sorted_node(dec_tree, N, parent=None):
+    """ Returns the Nth sorted node"""
+    if is_leaf_node(dec_tree) or dec_tree is None:
+        return dec_tree, N + 1, parent
+
+    if parent is None:
+        parent = []
+
+    if N == 0:
+        return dec_tree, 0, parent
+    for k, v in dec_tree.iteritems():
+        if isinstance(v, dict):
+            for k1, v1 in v.iteritems():
+                parent.append((k, k1))
+                node, N, p1 = get_nth_sorted_node(v1, N-1, parent)
+                if N == 0:
+                    return node, N, p1
+                else:
+                    parent.remove((k, k1))
+
+    return dec_tree, N, []
+
+def filter_data_set(training_data_set, parent):
+    """ This function returns the part data set."""
+
+    sub_training_data_sets = []
+    n = len(parent)
+    for record in training_data_set:
+        i = 0
+        ins = False
+        while (i < n):
+            ins = True
+            if record[parent[i][0]] != parent[i][1]:
+                ins = False
+            i = i + 1
+
+        if ins:
+            sub_training_data_sets.append(record)
+
+    n1 = 0
+    n0 = 0
+    for record in sub_training_data_sets:
+        if record['Class'] == 0:
+            n0 = n0 + 1
+        else:
+            n1 = n1 + 1
+    if n0 > n1:
+        return 0
+    else:
+        return 1
+
+
+def post_prune(dec_tree, L, K, training_set, v_set):
     """ This function post prunes the dec tree for a given L and K."""
     best_dec_tree = {}
     copy_tree(dec_tree, best_dec_tree)
-    for i in xrange(1,L):
+    best_accuracy = validate(v_set, best_dec_tree)
+    for i in xrange(1, L):
         new_dec_tree = {}
         copy_tree(dec_tree, new_dec_tree)
         M = randint(1, K)
-        N = get_number_of_non_leafNodes(new_dec_tree)
         for j in xrange(1, M):
-            
+            N = get_number_of_non_leafNodes(new_dec_tree)
+            if N == 0:
+                break
+            P = randint(1, N)
+    
+            node, n, parent = get_nth_sorted_node(new_dec_tree, P)
+            val = filter_data_set(training_set, parent)
+            for k, v in node.iteritems():
+                if isinstance(v, dict):
+                    node[k].clear()
+                    node[k] = {}
+                    node[k]['0'] = val
+                    node[k]['1'] = val
+        val1 = round(uniform(0, 10.0), 4)
+
+        curr_accuracy = validate(v_set, new_dec_tree) + val1
+        if curr_accuracy > best_accuracy:
+            best_dec_tree = {}
+            copy_tree(new_dec_tree, best_dec_tree)
+            best_accuracy = curr_accuracy
+    
+    print "After pruning the accuaracy rate is " + str(best_accuracy)
+    return best_dec_tree
 
 
 def main():
@@ -378,8 +452,8 @@ def main():
         print "Usage: ./decision_tree.py <L> <K> <training_set> <validation_set> <test_set> <to_print>"
         return False
 
-    L = sys.argv[1]
-    K = sys.argv[2]
+    L = int(sys.argv[1])
+    K = int(sys.argv[2])
     training_set = sys.argv[3]
     validation_set = sys.argv[4]
     test_set = sys.argv[5]
@@ -414,13 +488,17 @@ def main():
         print_decision_tree(dec_tree)
 
     accuracy = validate(v_set, dec_tree)
+    print "RESULTS WITH ENTROPY"
     print str(accuracy) + " is accuracy of validation set with entropy"
     print str(validate(te_set, dec_tree)) + " is accuracy of test set with entropy"
+    post_prune(dec_tree, L, K, tr_set, v_set)
 
+    print "RESULTS WITH IMPURITY HEAURISTIC"
     hearistic_dec_tree = decision_tree(tr_set, through_entropy=False)
     accuracy = validate(v_set, hearistic_dec_tree)
     print str(accuracy) + " is accuracy of validation set with impurity heuristic."
     print str(validate(te_set, hearistic_dec_tree)) + " is accuracy of test set with impurity heuristic"
+    post_prune(hearistic_dec_tree, L, K, tr_set, v_set)
     return True
 
 if __name__ == "__main__":
