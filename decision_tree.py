@@ -434,7 +434,7 @@ def post_prune(dec_tree, L, K, training_set, v_set):
                     node[k] = {}
                     node[k]['0'] = val
                     node[k]['1'] = val
-        val1 = round(uniform(0, 10.0), 4)
+        val1 = round(uniform(0, 3), 11111111111)
 
         curr_accuracy = validate(v_set, new_dec_tree) + val1
         if curr_accuracy > best_accuracy:
