@@ -59,9 +59,6 @@ class LogisticRegression(object):
         """ Returns the max difference between old and new weights."""
         diff = 0
         for text in self.weights:
-            if text not in new_weights:
-                print text
-                continue
             curr_diff = abs(self.weights[text] - new_weights[text])
             if curr_diff > diff:
                 diff = curr_diff
@@ -105,6 +102,7 @@ class LogisticRegression(object):
             i = i + 1
             if (abs(w0 - self.w0) > diff):
                 diff = abs(w0 - self.w0)
+            self.w0 = w0
 
             print i, diff
 
