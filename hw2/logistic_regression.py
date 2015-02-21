@@ -108,6 +108,8 @@ class LogisticRegression(object):
 
             logging.info(i, diff)
 
+        print "Training stopped after " + str(i) + " iterations."
+
     def get_test_probability_doc(self, doc):
         """ Returns the probablity of doc belonging to ham."""
         sum1 = self.w0
