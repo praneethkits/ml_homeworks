@@ -3,14 +3,14 @@ import argparse
 import glob
 import os, sys
 import math
-from general_functions import read_file_contents
+from general_functions import read_file_contents, stop_words_list
 
 
 class NaiveBayes(object):
     """ This class is used to implement the naive bayes algorithm for
     text classification."""
 
-    def __init__(self, training_set_path, test_set_path):
+    def __init__(self, training_set_path, test_set_path, RSW=False):
         """ This function is used to define the variables required by class.
         Args:
             test_set_path: path where test documents are stored.
@@ -22,6 +22,7 @@ class NaiveBayes(object):
         """
         self.test_set_path = test_set_path
         self.training_set_path = training_set_path
+        self.RSW = RSW
         self.training_classes = {}
         self.test_classes = {}
         self.test_Documents = {}
@@ -101,10 +102,15 @@ class NaiveBayes(object):
         """ This function calculates the accuracy of the test dataset."""
         NC = 0
         NW = 0
+        stop_words=stop_words_list()
         for k, v in self.test_Documents.iteritems():
             for doc in v:
                 status, contents = read_file_contents(doc)
-                vocab = contents.replace("\n", " ").split(" ")
+                vocab = contents.replace("\n", " ").replace("\r", "").split(" ")
+                if self.RSW:
+                    for word in vocab:
+                        if word in stop_words:
+                            vocab.remove(word)
                 clas = self.test_multinomial_nb(vocab)
                 if clas == k:
                     NC += 1
@@ -203,10 +209,16 @@ class NaiveBayes(object):
 
     def set_training_vocabulary(self):
         """ This function sets the vocabulary."""
+        stop_words=stop_words_list()
         for k, v in self.training_Documents.iteritems():
             for doc in v:
                 status, contents = read_file_contents(doc)
-                vocab = contents.replace("\n", " ").split(" ")
+                vocab = contents.replace("\n", " ").replace("\r", "").split(" ")
+                if self.RSW:
+                    for word in vocab:
+                        if word in stop_words:
+                            vocab.remove(word)
+                            
                 if k in self.training_Vocabulary:
                     self.training_Vocabulary[k].extend(vocab)
                 else:
@@ -232,9 +244,11 @@ def main():
                         help="training set path.")
     parser.add_argument('-te',  nargs=1, required=True,
                         help="test set path.")
+    parser.add_argument('-r', action='store_true',
+                        help="removes the stop words from vocabulary.")
     args = parser.parse_args()
 
-    nb = NaiveBayes(args.tr[0], args.te[0])
+    nb = NaiveBayes(args.tr[0], args.te[0], args.r)
     nb.train_multinomial_nb()
     accuracy = nb.get_accuracy_on_test_data()
     print str(accuracy) + " Is accuracy with naive bayes algorithm."

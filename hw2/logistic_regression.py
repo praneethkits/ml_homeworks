@@ -2,14 +2,15 @@ import os, sys, glob
 import logging
 import argparse
 import math, numpy
-from general_functions import read_file_contents
+from general_functions import read_file_contents, stop_words_list
 
 
 class LogisticRegression(object):
     """ This class implements the naive bayes algorithm for
     text classification."""
     def __init__(self, training_set_path, test_set_path, initial_weight=0.5,
-                 lamda=0.1, eeta=0.1, acceptable_delta=1, max_iterations=100):
+                 lamda=0.1, eeta=0.1, acceptable_delta=1, max_iterations=100,
+                 RSW=False):
         """ This function is used to define the variables required by class.
         Args:
             test_set_path: path where test documents are stored.
@@ -21,6 +22,7 @@ class LogisticRegression(object):
         """
         self.test_set_path = test_set_path
         self.training_set_path = training_set_path
+        self.RSW = RSW
         self.training_classes = {}
         self.test_classes = {}
         self.test_Documents = {}
@@ -104,7 +106,7 @@ class LogisticRegression(object):
                 diff = abs(w0 - self.w0)
             self.w0 = w0
 
-            print i, diff
+            logging.info(i, diff)
 
     def get_test_probability_doc(self, doc):
         """ Returns the probablity of doc belonging to ham."""
@@ -125,6 +127,8 @@ class LogisticRegression(object):
         Nc = 0
         Nw = 0
         for clas, v in self.test_Documents.iteritems():
+            clasNc = 0
+            clasNw = 0
             for doc in v:
                 ham_prob = self.get_test_probability_doc(doc)
                 if ham_prob >= 0.5:
@@ -134,8 +138,12 @@ class LogisticRegression(object):
 
                 if prediction == clas.lower():
                     Nc += 1
+                    clasNc += 1
                 else:
                     Nw += 1
+                    clasNw += 1
+            acc = (clasNc * 100.0)/(clasNc + clasNw)
+            logging.info(str(acc) + " is accuracy for class " + clas)
 
         accuracy = (Nc * 100.0)/(Nc + Nw)
 
@@ -212,11 +220,16 @@ class LogisticRegression(object):
 
     def set_test_vocab_doc(self):
         """ Sets the vocabulary count for each document."""
+        stop_words = stop_words_list()
         for k, v in self.test_Documents.iteritems():
             for doc in v:
                 self.test_vocab_doc[doc] = {}
                 status, contents = read_file_contents(doc)
                 vocab = contents.replace("\n", " ").split(" ")
+                if self.RSW:
+                    for word in vocab:
+                        if word in stop_words:
+                            vocab.remove(word)
 
                 for text in vocab:
                     if text in self.test_vocab_doc[doc]:
@@ -226,10 +239,15 @@ class LogisticRegression(object):
 
     def set_training_vocabulary(self):
         """ This function sets the vocabulary."""
+        stop_words = stop_words_list()
         for k, v in self.training_Documents.iteritems():
             for doc in v:
                 status, contents = read_file_contents(doc)
                 vocab = contents.replace("\n", " ").split(" ")
+                if self.RSW:
+                    for word in vocab:
+                        if word in stop_words:
+                            vocab.remove(word)
                 if k in self.training_Vocabulary:
                     self.training_Vocabulary[k].extend(vocab)
                 else:
@@ -270,16 +288,16 @@ def main():
                         help="lambda.")
     parser.add_argument('-e', nargs=1, required=True,
                         help="eeta.")
-    parser.add_argument('-ad', nargs=1, required=False,
+    parser.add_argument('-ad', nargs=1, required=True,
                         help="acceptible delta between weights for convergence.")
+    parser.add_argument('-mi', nargs=1, required=True,
+                        help="maximum number of iterations.")
+    parser.add_argument('-r', action='store_true',
+                        help="Remove the stop words.")
     args = parser.parse_args()
-    if args.ad is None:
-        lg = LogisticRegression(args.tr[0], args.te[0], float(args.iw[0]),
-                                float(args.l[0]), float(args.e[0]))
-    else:
-        lg = LogisticRegression(args.tr[0], args.te[0], float(args.iw[0]),
-                                float(args.l[0]), float(args.e[0]),
-                                float(args.ad[0]))
+    lg = LogisticRegression(args.tr[0], args.te[0], float(args.iw[0]),
+                            float(args.l[0]), float(args.e[0]),
+                            float(args.ad[0]), int(args.mi[0]), args.r)
     lg.train_logistic_regression()
 
     print str(lg.get_accuracy()) + " is the accuracy."
