@@ -108,6 +108,8 @@ class LogisticRegression(object):
 
             logging.info(i, diff)
 
+        print "Training stopped after " + str(i) + " iterations."
+
     def get_test_probability_doc(self, doc):
         """ Returns the probablity of doc belonging to ham."""
         sum1 = self.w0
@@ -277,7 +279,7 @@ class LogisticRegression(object):
 
 def main():
     """The control and execute block of the program."""
-    parser = argparse.ArgumentParser(prog='bayes.py')
+    parser = argparse.ArgumentParser(prog='logistic_regression.py')
     parser.add_argument('-tr', nargs=1, required=True,
                         help="training set path.")
     parser.add_argument('-te',  nargs=1, required=True,
