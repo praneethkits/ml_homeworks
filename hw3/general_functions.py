@@ -1,4 +1,4 @@
-
+import logging
 
 
 def read_file_contents(file_name=None):
@@ -18,7 +18,7 @@ def read_file_contents(file_name=None):
     try:
         file_descriptor = open(file_name, "rb")
     except IOError:
-        logging.error("Unable to open given protobuf file")
+        logging.error("Unable to open given protobuf file " + file_name)
         return False, 'NA'
 
     file_content = file_descriptor.read()

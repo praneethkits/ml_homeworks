@@ -1,5 +1,4 @@
-
-
+import logging
 
 def read_file_contents(file_name=None):
     """This function is used to read the file contents and return contents
@@ -18,7 +17,8 @@ def read_file_contents(file_name=None):
     try:
         file_descriptor = open(file_name, "rb")
     except IOError:
-        logging.error("Unable to open given protobuf file")
+        # print file_name
+        logging.error("Unable to open given file")
         return False, 'NA'
 
     file_content = file_descriptor.read()
