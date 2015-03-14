@@ -2,9 +2,12 @@ import logging
 import argparse
 import glob
 import os, sys
+import threading
+import time
 import numpy as np
+import math
 
-
+s = time.time()
 class CollaberiveFilter(object):
     """ Implements the collaberive filtering on Netflix data."""
     def __init__(self, training_file, test_file, num_of_movies, num_of_users):
@@ -58,8 +61,8 @@ class CollaberiveFilter(object):
         """ Returns the means of users and movies."""
         self.train_ratings[np.where(self.train_ratings == 0)] = np.nan
 
-        self.user_means = np.nanmean(self.train_ratings, axis=0)
-        self.movie_means = np.nanmean(self.train_ratings, axis=1)
+        self.user_means = [ round(x, 3) for x in np.nanmean(self.train_ratings, axis=0) ]
+        self.movie_means = [ round(x, 3) for x in np.nanmean(self.train_ratings, axis=1) ]
 
     def get_user_diff(self, movieid, userid):
         if str(self.train_ratings[movieid][userid]) == "nan" and \
@@ -76,8 +79,14 @@ class CollaberiveFilter(object):
         
     def get_weight(self, user1, user2):
         """ Returns the correlation weight between user1 and user2."""
-        if (user1, user2) in self.weights:
-            return self.weights[(user1, user2)]
+        if user1 > user2:
+            a = user1
+            b = user2
+        else:
+            a = user2
+            b = user1
+        if (a, b) in self.weights:
+            return self.weights[(a, b)]
 
         num = 0
         den1 = 0
@@ -89,18 +98,18 @@ class CollaberiveFilter(object):
             den1 += user1_diff*user1_diff
             den2 += user2_diff*user2_diff
             
-        den = np.sqrt(den1*den2)
+        den = math.sqrt(den1*den2)
         if str(den) == "nan":
             print str(den) + " is denominator."
         if den != 0:
-            weight = (num*1.0)/(den*1.0)
+            weight = round((num*1.0)/(den*1.0), 3)
         else:
             weight = 0
         
         if weight is np.nan:
             weight = 0
             print str(weight) + " is weight for users " +  str(user1) + " " + str(user2) 
-        self.weights[(user1, user2)] = weight
+        self.weights[(a, b)] = weight
         return weight
 
     def set_test_ratings(self):
@@ -123,33 +132,79 @@ class CollaberiveFilter(object):
                 break
 
 
-        print str(sum) + " is sum."
-        sum = (1.0*sum/weightSum)
-        print str(sum) + " is sum."
+        # print str(sum) + " is sum."
+        if weightSum == 0:
+            weightSum = 1
+        sum = round((1.0*sum/weightSum), 3)
+        #print str(sum) + " is sum."
         rating = self.user_means[userid] + sum
+        if abs(rating) > 5:
+            return rating % 5
         return rating
+        
+    def claculate_error(self, start, end, errors):
+        """ This method caluclates the errors in test data from start 
+        to end position and stores the errors in the error, error^2 list."""
+        i = start
+        MAE = 0
+        RMSE = 0
+        while i <= end:
+            movieid = self.movies[int(self.test_ratings[i][0])]
+            userid = self.users[int(self.test_ratings[i][1])]
+            expected_rating = self.predict_rating(userid, movieid)
+            #print str(expected_rating) + " is predicted rating for " + str(self.test_ratings[i][0]) +\
+            #    " movie by user " + str(int(self.test_ratings[i][1])) + " where actual rating is " +\
+            #    str(int(self.test_ratings[i][2]))
+            error = abs(int(self.test_ratings[i][2]) - expected_rating)
+            MAE = MAE + error
+            RMSE = RMSE + error * error
+            i += 1
+            if i % 10 == 0:
+                print "Time taken = {0}".format(s - time.time())
+                print "{0} records processing finished, MAE: {1}, RMSE: {2}".format(i, MAE, RMSE)
+        errors.append((MAE, RMSE))
 
     def calculate_errors(self):
         """ Calculates the mean absolute error and root mean square error."""
         self.set_test_ratings()
         MAE = 0
         RMSE = 0
-        n = 0
-        for record in self.test_ratings:
-            movieid = self.movies[int(record[0])]
-            userid = self.users[int(record[1])]
-            expected_rating = self.predict_rating(userid, movieid)
-            print str(expected_rating) + " is predicted rating for " + str(record[0]) +\
-                " movie by user " + str(record[1]) + " where actual rating is " + str(record[2])
-            error = abs(record[2] - expected_rating)
-            MAE = MAE + error
-            RMSE = RMSE + error * error
-            n = n + 1
+        start = 0
+        error_list = []
+        thread_list = []
+        no_threads = 20
+        total_tests = len(self.test_ratings)
+        sub_tests = total_tests/no_threads
+        end = sub_tests - 1
+        while start < total_tests:
+            if end >= total_tests:
+                end = total_tests - 1
+                n = no_threads
+            error = []
+            error_list.append(error)
+            t = threading.Thread(target=self.claculate_error, args=(start, end, error))
+            t.run()
+            thread_list.append(t)
+            start += sub_tests
+            end += sub_tests
+            
+        # wait untiul all the therads are Finished.
+        for t in thread_list:
+            try:
+                t.join()
+            except:
+                continue
 
-        MAE = MAE/n
-        RMSE = np.sqrt(RMSE/n)
+        #error = []
+        #error_list.append(error)
+        #self.claculate_error(0, total_tests - 1, error)
+            
+        for error in error_list:
+            MAE += error[0][0]
+            RMSE += error[0][1]
+        MAE = MAE/total_tests
+        RMSE = math.sqrt(RMSE/total_tests)
         return MAE, RMSE
-
 
 def main():
     """The control and execute block of the program."""
@@ -179,7 +234,10 @@ def main():
     cF.get_means()
     print cF.train_ratings[cF.movies[8]][cF.users[1818178]]
     print cF.user_means[cF.users[1818178]]
-    print cF.calculate_errors()
+    s = time.time()
+    errors = cF.calculate_errors()
+    print "Mean Absolute Error = " + str(errors[0])
+    print "Root Mean Square Error = " + str(errors[1])
 
 
 if __name__ == "__main__":

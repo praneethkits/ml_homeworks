@@ -6,6 +6,7 @@ import math
 import numpy
 import random
 from general_functions import read_file_contents, stop_words_list
+stop_words = stop_words_list()
 
 
 class perceptron(object):
