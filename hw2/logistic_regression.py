@@ -145,7 +145,7 @@ class LogisticRegression(object):
                     Nw += 1
                     clasNw += 1
             acc = (clasNc * 100.0)/(clasNc + clasNw)
-            logging.info(str(acc) + " is accuracy for class " + clas)
+            print(str(acc) + " is accuracy for class " + clas)
 
         accuracy = (Nc * 100.0)/(Nc + Nw)
 

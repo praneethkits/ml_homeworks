@@ -104,6 +104,8 @@ class NaiveBayes(object):
         NW = 0
         stop_words=stop_words_list()
         for k, v in self.test_Documents.iteritems():
+            NCSub = 0
+            NWSub = 0
             for doc in v:
                 status, contents = read_file_contents(doc)
                 vocab = contents.replace("\n", " ").replace("\r", "").split(" ")
@@ -114,8 +116,13 @@ class NaiveBayes(object):
                 clas = self.test_multinomial_nb(vocab)
                 if clas == k:
                     NC += 1
+                    NCSub += 1
                 else:
                     NW += 1
+                    NWSub += 1
+
+            sub_acc = (NCSub *100.0)/(NCSub + NWSub)
+            print "accuracy of {0} is {1}".format(k, sub_acc) 
 
         accuracy = (NC * 100.0)/(NC + NW)
         return accuracy

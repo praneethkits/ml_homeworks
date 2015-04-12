@@ -159,7 +159,7 @@ class CollaberiveFilter(object):
             MAE = MAE + error
             RMSE = RMSE + error * error
             i += 1
-            if i % 10 == 0:
+            if i % 2 == 0:
                 print "Time taken = {0}".format(s - time.time())
                 print "{0} records processing finished, MAE: {1}, RMSE: {2}".format(i, MAE, RMSE)
         errors.append((MAE, RMSE))
@@ -183,7 +183,7 @@ class CollaberiveFilter(object):
             error = []
             error_list.append(error)
             t = threading.Thread(target=self.claculate_error, args=(start, end, error))
-            t.run()
+            t.start()
             thread_list.append(t)
             start += sub_tests
             end += sub_tests
