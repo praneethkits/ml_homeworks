@@ -100,13 +100,41 @@ public class KMeans {
     }
 
     private static class node{
-        public long sum;
+        public long rSum;
+        public long gSum;
+        public long bSum;
         public int count;
 
         public node(){
-            sum = 0;
+            rSum = 0;
+            gSum = 0;
+            bSum = 0;
             count = 0;
         }
+    }
+
+    public static int[] convertRGB(int rgb){
+        int [] ret = new int[3];
+        ret[0] = (rgb >> 16) & 0xFF;
+        ret[1] = (rgb >> 8) & 0xFF;
+        ret[2] = rgb & 0xFF;
+
+        return ret;
+    }
+
+    public static int getRGB(int r, int g, int b){
+        int rgb = ((r << 16) | ((g << 8) | b));
+        return rgb;
+    }
+
+    public static int getDist(int rgb1, int rgb2){
+        int [] rgbValues1 = convertRGB(rgb1);
+        int [] rgbValues2 = convertRGB(rgb2);
+        int rDist = (rgbValues1[0] - rgbValues2[0])*(rgbValues1[0] - rgbValues2[0]);
+        int gDist = (rgbValues1[1] - rgbValues2[1])*(rgbValues1[1] - rgbValues2[1]);
+        int bDist = (rgbValues1[2] - rgbValues2[2])*(rgbValues1[2] - rgbValues2[2]);
+        int dist = rDist + gDist + bDist;
+        return dist;
     }
 
     public static long runKMeans(int[] rgb, int[] centroids, int[] rgbCluster){
@@ -118,29 +146,27 @@ public class KMeans {
             int minD = Integer.MAX_VALUE;
             // System.out.println("rgb at i is " + rgb[i]);
             for (int j=0; j < centroids.length; j++){
-                if ( Math.abs(centroids[j] - rgb[i]) < minD){
+                int dist = getDist(rgb[i], centroids[j]);
+                if ( dist < minD){
                     rgbCluster[i] = centroids[j];
-                    minD = Math.abs(centroids[j] - rgb[i]);
-                    if (minD < 0)
-                        System.out.println("minD is less than 0 and is " + minD);
+                    minD = dist;
                 }
             }
-            int y = Math.abs(rgbCluster[i] - rgb[i]);
-            error = error + y;
-            if (error <0 || y < 0){
-                System.out.println("error is lessthan 0 and is " + error + " rgb i " + rgb[i] + " rgbCluster[i] " + rgbCluster[i] + " at index " + i); 
-                break;
-            }
+            error += minD;
 
             if (hm.containsKey(rgbCluster[i])){
                 node cr = hm.get(rgbCluster[i]);
-                cr.sum = cr.sum + rgb[i];
+                int[] rgbValues = convertRGB(rgb[i]);
+                cr.rSum += rgbValues[0];
+                cr.gSum += rgbValues[1];
+                cr.bSum += rgbValues[2];
                 cr.count = cr.count + 1;
-                hm.remove(rgbCluster[i]);
-                hm.put(rgbCluster[i], cr);
             }else{
                 node cr = new node();
-                cr.sum = rgb[i];
+                int[] rgbValues = convertRGB(rgb[i]);
+                cr.rSum = rgbValues[0];
+                cr.gSum = rgbValues[1];
+                cr.bSum = rgbValues[2];
                 cr.count = 1;
                 hm.put(rgbCluster[i], cr);
             }
@@ -148,9 +174,12 @@ public class KMeans {
 
         for (int i=0;i<centroids.length; i++){
             //System.out.println(hm.keySet().size());
-            //System.out.println(hm.keySet());
+            System.out.println(hm.keySet());
                 node cr = hm.get(centroids[i]);
-                centroids[i] = (int)cr.sum/cr.count;
+                int rAvg = (int)cr.rSum/cr.count;
+                int gAvg = (int)cr.gSum/cr.count;
+                int bAvg = (int)cr.bSum/cr.count;
+                centroids[i] = getRGB(rAvg, gAvg, bAvg);
             /*} catch ( Exception e){
                 int [] cent =  new int[1];
                 randomInitialize(rgb, cent);
