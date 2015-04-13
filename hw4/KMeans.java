@@ -13,11 +13,13 @@ import javax.imageio.ImageIO;
 import java.util.*; 
 
 public class KMeans {
+	
     public static void main(String [] args){
 	    if (args.length < 3){
 	        System.out.println("Usage: Kmeans <input-image> <k> <output-image>");
 	        return;
 	    }
+	    input_file = args[0];
 	    try{
 	        BufferedImage originalImage = ImageIO.read(new File(args[0]));
 	        int k=Integer.parseInt(args[1]);
@@ -28,10 +30,15 @@ public class KMeans {
 	        System.out.println(e.getMessage());
 	    }	
     }
+
+    private static BufferedImage original;
+    private static String input_file;
+    private static double[] compressionArray = new double[50];
     
     private static BufferedImage kmeans_helper(BufferedImage originalImage, int k){
 	    int w=originalImage.getWidth();
 	    int h=originalImage.getHeight();
+	    original = originalImage;
 	    BufferedImage kmeansImage = new BufferedImage(w,h,originalImage.getType());
 	    Graphics2D g = kmeansImage.createGraphics();
 	    g.drawImage(originalImage, 0, 0, w,h , null);
@@ -54,6 +61,44 @@ public class KMeans {
 	        }
 	    }
 	    return kmeansImage;
+    }
+    
+    private static void writeImage(int[] rgb, String f){
+    	int w=original.getWidth();
+	    int h=original.getHeight();
+	    BufferedImage kmeansImage = new BufferedImage(w,h,original.getType());
+	    Graphics2D g = kmeansImage.createGraphics();
+	    g.drawImage(original, 0, 0, w, h, null);
+
+	    // Write the new rgb values to the image
+	    int count=0;
+	    for(int i=0;i<w;i++){
+	        for(int j=0;j<h;j++){
+		        kmeansImage.setRGB(i,j,rgb[count++]);
+	        }
+	    }
+	    try{
+	        ImageIO.write(kmeansImage, "jpg", new File(f)); 
+	    }catch(IOException e){
+	        System.out.println(e.getMessage());
+	    }	
+    }
+    
+    private static double getCompression(String f){
+    	File f1 = new File(input_file);
+    	File f2 = new File(f);
+    	long f1Bytes = f1.length();
+    	long f2Bytes = f2.length();
+    	return (double)(f1Bytes * 1.0)/f2Bytes;
+    }
+    
+    private static void deleteFile(String f){
+    	try{
+    		File file = new File(f);
+    		file.delete();
+    	}catch(Exception e){
+    		System.out.println(e.getMessage());
+    	}
     }
 
     private static class clusteredNode{
@@ -84,7 +129,7 @@ public class KMeans {
                 long newError = runKMeans(rgb, centroids, rgbCluster);
                 errorDiff = Math.abs(newError - error);
                 error = newError;
-                System.out.println("Error: " + error + ", errorDiff: " + errorDiff + ", iteration: " + i);
+                //System.out.println("Error: " + error + ", errorDiff: " + errorDiff + ", iteration: " + i);
             }
             
             if (error < outError){
@@ -93,8 +138,16 @@ public class KMeans {
             }
             clusteredNode cN = new clusteredNode(rgbCluster, error);
             mK.put(i, cN);
+            String f = "./tmp/" + i;
+            writeImage(rgbCluster, f);
+            compressionArray[i] = getCompression(f);
+            deleteFile(f);
+            
         }
 
+        Statistics s = new Statistics(compressionArray);
+        System.out.println("Mean of Compressions: " + s.getMean());
+        System.out.println("Variance of Compressions: " + s.getVariance());
         clusteredNode cN = mK.get(minIndex);
         copyArray(cN.rgb, rgb);
     }
@@ -174,7 +227,7 @@ public class KMeans {
 
         for (int i=0;i<centroids.length; i++){
             //System.out.println(hm.keySet().size());
-            System.out.println(hm.keySet());
+            //System.out.println(hm.keySet());
                 node cr = hm.get(centroids[i]);
                 int rAvg = (int)cr.rSum/cr.count;
                 int gAvg = (int)cr.gSum/cr.count;
