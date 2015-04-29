@@ -14,7 +14,7 @@ LEVELS = {'debug': logging.DEBUG,
 
 class EM(object):
     """ This class implements the expectation maximization algorithm."""
-    def __init__(self, input_file):
+    def __init__(self, input_file, constVar=False, K=3):
         """Initialize the variables required by the EM class"""
         self.input_file = input_file
         self.data = []
@@ -26,18 +26,32 @@ class EM(object):
         self.Weights = []
         self.data_mean = 0.0
         self.data_var = 0.0
-        self.K = 3
-        self.Var = 0.0
+        self.K = K
+        self.Var = 1.0
+        self.constVar = constVar
         
-    def init_alpha(self):
+    def initialize(self, alpha=None, mu=None):
+        """Initializes different variables"""
+        self.read_file()
+        self.init_alpha(alpha)
+        self.init_Weights()
+        self.init_mu(mu)
+        self.init_var()
+        
+    def init_alpha(self, alpha=None):
         """ Initializes alpha with random values."""
-        randNums = np.random.dirichlet(np.ones(self.K),size=1)[0]
-        i = 0
-        for num in randNums:
-            self.alpha.append(num)
-            self.alpha_new.append(num)
-            logging.info("Random alpha at " + str(i) + " is " + str(num));
-            i += 1
+        if alpha is None:
+            randNums = np.random.dirichlet(np.ones(self.K),size=1)[0]
+            i = 0
+            for num in randNums:
+                self.alpha.append(num)
+                self.alpha_new.append(num)
+                logging.info("Random alpha at " + str(i) + " is " + str(num));
+                i += 1
+        else:
+            for num in alpha:
+                self.alpha.append(num)
+                self.alpha_new.append(num)
 
     def init_Weights(self):
         """ This function is used to initialize the weights."""
@@ -51,21 +65,29 @@ class EM(object):
             self.Weights.append(l)
             i += 1
 
-    def init_mu(self):
+    def init_mu(self, mu=None):
         """ This function initializes mu"""
-        i = 0
-        while (i < self.K):
-            self.mu.append(self.data[randint(0, self.Num_inputs -1)])
-            logging.info("mu at pos " + str(i) + " is " + str(self.mu[i]))
-            i += 1
+        if mu is None:
+            i = 0
+            while (i < self.K):
+                self.mu.append(self.data[randint(0, self.Num_inputs -1)])
+                logging.info("mu at pos " + str(i) + " is " + str(self.mu[i]))
+                i += 1
+        else:
+            self.mu.extend(mu)
 
     def init_var(self):
         """ This function initializes variance."""
         i = 0
-        while (i < self.K):
-            self.var.append(self.data_var * (1+randint(0, self.Num_inputs -1)%5))
-            logging.info("var at pos " + str(i) + " is " + str(self.var[i]))
-            i += 1
+        if self.constVar:
+            while (i < self.K):
+                self.var.append(self.Var)
+                i += 1
+        else:
+            while (i < self.K):
+                self.var.append(self.data_var * (1+randint(0, self.Num_inputs -1)%5))
+                logging.info("var at pos " + str(i) + " is " + str(self.var[i]))
+                i += 1
 
     def read_file(self):
         """ Reads the input file and stores the data in data variable."""
@@ -93,7 +115,7 @@ class EM(object):
             sum = 0.0
             l = []
             for j in xrange(self.K):
-                l[j] = self.alpha[j] * probability(i, j)
+                l.append(self.alpha[j] * self.probability(i, j))
                 sum += l[j] * l[j]
 
             sum = math.sqrt(sum)
@@ -103,7 +125,8 @@ class EM(object):
                     l[j] = 0
                 else:
                     l[j] = l[j]/sum
-                    logging.info("expectation at " + str(i) +"," + str(j) + " is " + l[j]);
+                    logging.info("expectation at " + str(i) +"," + str(j) +
+                                 " is " + str(l[j]));
             self.Weights[i] = l
 
     def probability(self, i, j):
@@ -112,7 +135,8 @@ class EM(object):
         num = math.exp(-(x_mu * x_mu)/(2*self.var[j]))
         den = math.sqrt(2 * math.pi * self.var[j]);
         res = num/den
-        logging.info("Result is: " + str(res))
+        logging.info("probability for " + str(i) +"," + str(j) + " is " +
+                     str(res))
         return res
 
     def maximization_step(self):
@@ -121,6 +145,7 @@ class EM(object):
         d0 = 0.0
         for j in xrange(self.K):
             n0 = 0.0
+            N.append(0.0)
             for i in xrange(self.Num_inputs):
                 N[j] += self.Weights[i][j]
                 n0 += self.Weights[i][j] * self.data[i]
@@ -132,7 +157,9 @@ class EM(object):
             for i in xrange(self.Num_inputs):
                 n1 += self.Weights[i][j] * (self.data[i] - self.mu[j]) *\
                       (self.data[i] - self.mu[j])
-            self.var[j] = n1/N[j]
+            if not self.constVar:
+                self.var[j] = n1/N[j]
+            logging.info("Variance at " + str(j) + " is " + str(self.var[j]))
 
         d0 = math.sqrt(d0)
         for i in xrange(self.K):
@@ -148,26 +175,53 @@ class EM(object):
         diff = 0.0
         for i in xrange(self.K):
             diff += math.fabs(self.alpha[i] - self.alpha_new[i])
-            if diff > 0.0001:
+            logging.info("convergence difference is " + str(diff))
+            if diff > 0.00000001:
                 return False
         return True
 
     def run(self):
         """ Runs the EM algorithm on given file."""
-        self.read_file()
-        self.init_alpha()
-        self.init_Weights()
-        self.init_mu()
-        self.init_var()
         loop = True
         iterations = 0
+        self.print_stats(iterations, True)
         while loop:
             self.expectation_step()
             self.maximization_step()
-            if self.check_convergence()
+            if self.check_convergence():
                 loop = False
+            for i in xrange(self.K):
+                self.alpha[i] = self.alpha_new[i]
             iterations += 1
-        logging.info("iterations = " +  str(iterations))
+            logging.info("iterations = " +  str(iterations))
+
+        self.print_stats(iterations)
+
+    def print_stats(self, iterations, initial=False):
+        """ Prints the EM Statistics."""
+        if initial:
+            print "INITIAL STATS\n"
+        else:
+            print "FINAL STATS\n"
+            print "NUMBER OF ITERATIONS = %d\n" % iterations
+            
+        print "\nMEANS"
+        i = 1
+        for m in self.mu:
+            print "mu at index %d = %f" % (i, m)
+            i += 1
+        
+        print "\nVARIANCE"
+        i = 1
+        for v in self.var:
+            print "variance at index %d = %f" % (i, v)
+            i += 1
+
+        print "\nALPHA"
+        i = 1
+        for a in self.alpha:
+            print "alpha at index %d = %f" % (i, a)
+            i += 1
 
 
 def main():
@@ -184,12 +238,26 @@ def main():
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     open(log_dir + log_file, 'a').close()  # Create log file if not present.
-    logging.basicConfig(filename=log_dir + log_file,
-                        level=LEVELS.get(args.d[0], logging.DEBUG))
+    if args.d is not None:
+        logging.basicConfig(filename=log_dir + log_file,
+                            level=LEVELS.get(args.d[0]))
+    else:
+        logging.basicConfig(filename=log_dir + log_file,
+                            level=logging.WARNING)
+    
+    print "**************With Variable Variance**************\n\n"
     em = EM(args.f[0])
+    em.initialize()
+    a = []
+    a.extend(em.alpha)
+    mu = []
+    mu.extend(em.mu)
     em.run()
     
-    
+    print "\n\n**************With Constant Variance**************\n\n"
+    em = EM(args.f[0], constVar=True)
+    em.initialize(a, mu)
+    em.run()
 
 
 if __name__ == "__main__":
