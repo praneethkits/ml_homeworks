@@ -1,9 +1,0 @@
-INFO:root:Number of inputs = 6000
-INFO:root:Data mean = 15.4816982031
-INFO:root:Data var = 67.5149383037
-INFO:root:Random alpha at 0 is 0.462407708004
-INFO:root:Random alpha at 1 is 0.0511264520202
-INFO:root:Random alpha at 2 is 0.486465839975
-INFO:root:mu at pos 0 is 14.9648453687
-INFO:root:mu at pos 1 is 6.40253472738
-INFO:root:mu at pos 2 is 5.91708053184

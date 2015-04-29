@@ -143,6 +143,15 @@ class EM(object):
                 self.alpha_new[i] = self.alpha_new[i]/d0
             logging.info("new alpha at " + str(i) + " is " + str(self.alpha_new[i]))
 
+    def check_convergence(self):
+        """ Checks for the convergence."""
+        diff = 0.0
+        for i in xrange(self.K):
+            diff += math.fabs(self.alpha[i] - self.alpha_new[i])
+            if diff > 0.0001:
+                return False
+        return True
+
     def run(self):
         """ Runs the EM algorithm on given file."""
         self.read_file()
@@ -150,6 +159,15 @@ class EM(object):
         self.init_Weights()
         self.init_mu()
         self.init_var()
+        loop = True
+        iterations = 0
+        while loop:
+            self.expectation_step()
+            self.maximization_step()
+            if self.check_convergence()
+                loop = False
+            iterations += 1
+        logging.info("iterations = " +  str(iterations))
 
 
 def main():
