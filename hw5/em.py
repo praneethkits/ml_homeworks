@@ -176,7 +176,7 @@ class EM(object):
         for i in xrange(self.K):
             diff += math.fabs(self.alpha[i] - self.alpha_new[i])
             logging.info("convergence difference is " + str(diff))
-            if diff > 0.00000001:
+            if diff > 0.0001:
                 return False
         return True
 
@@ -229,9 +229,13 @@ def main():
     parser = argparse.ArgumentParser(prog='em.py')
     parser.add_argument('-f', nargs=1, required=True,
                         help="input file.")
+    parser.add_argument('-k', nargs=1, type=int,
+                        help="Number of clusters")
     parser.add_argument('-d', nargs=1, required=False,
                         choices=LEVELS.keys(),
                         help="Level of debugging")
+    parser.add_argument('-a', nargs='+', required=False,
+                        type=float, help="Alpha values")
     args = parser.parse_args()
     log_file = "em_%s.log" % time.strftime("%Y%m%d_%H%M%S")
     log_dir = "./em_logs/"
@@ -246,8 +250,11 @@ def main():
                             level=logging.WARNING)
     
     print "**************With Variable Variance**************\n\n"
-    em = EM(args.f[0])
-    em.initialize()
+    if args.k is None:
+        em = EM(args.f[0])
+    else:
+        em = EM(args.f[0], K=args.k[0])
+    em.initialize(alpha=args.a)
     a = []
     a.extend(em.alpha)
     mu = []
@@ -255,7 +262,10 @@ def main():
     em.run()
     
     print "\n\n**************With Constant Variance**************\n\n"
-    em = EM(args.f[0], constVar=True)
+    if args.k is None:
+        em = EM(args.f[0], constVar=True)
+    else:
+        em = EM(args.f[0], constVar=True, K=args.k[0])
     em.initialize(a, mu)
     em.run()
 
